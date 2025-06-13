@@ -29,6 +29,47 @@ Alita consists of several core components:
 
 ### Workflow
 
+```mermaid
+flowchart TD
+    A["🎯 Input Task"] --> B["🧠 ManagerAgent.orchestrate()"]
+    B --> C["📊 MCPBrainstorm.brainstorm()"]
+    C --> D{"🔍 Capability Gap Detected?"}
+    
+    D -->|Yes| E["🌐 WebAgent.search()"]
+    D -->|No| F["📝 ScriptGenerator.generate_script()"]
+    
+    E --> G["🔗 WebAgent.navigate()"]
+    G --> H["📚 Collect External Resources"]
+    H --> F
+    
+    F --> I["🏗️ EnvironmentManager.create_environment()"]
+    I --> J["📦 EnvironmentManager.install_dependencies()"]
+    J --> K["▶️ CodeRunner.run_script()"]
+    
+    K --> L{"✅ Execution Successful?"}
+    
+    L -->|Yes| M["💾 MCPRegistry.register_mcp()"]
+    L -->|No| N{"🔄 Max Iterations Reached?"}
+    
+    N -->|No| O["📝 Update Context with Error"]
+    O --> C
+    N -->|Yes| P["❌ Return Failure"]
+    
+    M --> Q["✨ Return Success Result"]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style C fill:#fff3e0
+    style E fill:#e8f5e8
+    style F fill:#fff8e1
+    style K fill:#fce4ec
+    style M fill:#e0f2f1
+    style Q fill:#e8f5e8
+    style P fill:#ffebee
+```
+
+#### Detailed Process Flow:
+
 1. **Task Analysis**: Analyze input task and detect capability gaps
 2. **Resource Gathering**: Search external resources if gaps are detected
 3. **Script Generation**: Generate self-contained Python script
@@ -96,7 +137,7 @@ environment:
 ```yaml
 api:
   openai_api_key: "<YOUR_API_KEY_HERE>"    # OpenAI API key
-  openai_api_url: "https://api.openai.com/v1/chat/completions"
+  openai_api_url: "https://api.openai.com/v1"
 ```
 
 ### Benchmark Configuration
