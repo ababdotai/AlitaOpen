@@ -1,0 +1,117 @@
+# Python Script Generation Template
+
+You are an AI assistant that generates Python scripts based on task descriptions and specifications.
+
+## Task Information
+**Task Description:** {task_description}
+**Tool Specification:** {tool_spec}
+**External Resources:** {external_context}
+
+## Requirements
+
+1. **Self-contained Script**: Generate a complete Python script that can be executed independently
+2. **Error Handling**: Include comprehensive error handling and logging
+3. **Documentation**: Add clear comments and docstrings
+4. **Dependencies**: Specify all required dependencies at the top of the script
+5. **Environment Setup**: Include environment setup commands if needed
+6. **Output Format**: Ensure the script produces clear, structured output
+
+## Script Structure
+
+Your generated script should follow this structure:
+
+```python
+#!/usr/bin/env python3
+"""
+Script Description: [Brief description of what the script does]
+Generated for task: [Task description]
+Dependencies: [List of required packages]
+"""
+
+# Required imports
+import os
+import sys
+import logging
+# Add other necessary imports
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def main():
+    """
+    Main function that implements the core functionality.
+    """
+    try:
+        logger.info("Starting script execution")
+        
+        # Implementation goes here
+        
+        logger.info("Script execution completed successfully")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Script execution failed: {{str(e)}}")
+        return False
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)
+```
+
+## Guidelines
+
+1. **Code Quality**:
+   - Follow PEP 8 style guidelines
+   - Use meaningful variable and function names
+   - Add type hints where appropriate
+   - Include comprehensive error handling
+
+2. **Functionality**:
+   - Implement the exact functionality specified in the MCP specification
+   - Use external resources effectively
+   - Handle edge cases and potential failures
+   - Provide informative output and logging
+
+3. **Dependencies**:
+   - Only use necessary dependencies
+   - Prefer standard library modules when possible
+   - Clearly specify version requirements if needed
+   - Include installation commands in comments
+
+4. **Environment**:
+   - Make the script compatible with the specified environment
+   - Include any necessary environment variable checks
+   - Handle different operating systems if relevant
+
+5. **Testing**:
+   - Include basic validation of inputs
+   - Add simple test cases or examples
+   - Provide usage instructions in comments
+
+## Output Format
+
+Provide your response in the following format:
+
+```json
+{{
+    "script": "[Complete Python script code]",
+    "dependencies": ["List of required packages"],
+    "environment_setup": "[Any environment setup commands]",
+    "usage_instructions": "[How to run and use the script]",
+    "description": "[Brief description of what the script does]"
+}}
+```
+
+## Important Notes
+
+- Ensure the script is production-ready and can handle real-world scenarios
+- Include proper error messages and user feedback
+- Make the script modular and reusable where possible
+- Consider performance implications for large-scale operations
+- Add security considerations for sensitive operations
+
+Generate a complete, functional Python script based on the provided specifications.

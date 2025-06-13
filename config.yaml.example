@@ -1,0 +1,56 @@
+## config.yaml.example
+## Copy this file to config.yaml and update the values according to your setup
+
+training:
+  learning_rate: "N/A"  ## Not applicable; the agent pipeline does not use gradient-based training.
+  batch_size: "N/A"     ## Not applicable for this experimental setup.
+  epochs: "N/A"         ## No training epochs needed.
+
+benchmark:
+  gaia:
+    dataset_path: "data/gaia.json"   ## GAIA dataset with 466 queries
+  mathvista:
+    sample_size: 100
+    dataset_path: "data/mathvista.json"  ## Randomly selected 100 samples
+  pathvqa:
+    sample_size: 100
+    dataset_path: "data/pathvqa.json"  ## Randomly selected 100 samples
+
+evaluation:
+  rounds: 3  ## Running three rounds for pass@1 and pass@3 metrics
+
+agent:
+  primary_llm: "gpt-4o"            ## Primary high-capability model (e.g., gpt-4o or Claude-3.7-Sonnet)
+  secondary_llm: "gpt-4o-mini"       ## Smaller model configuration for performance comparison
+  mcp_prompt_template: "templates/mcp_prompt.txt"  ## MCP Brainstorming prompt template
+  script_gen_prompt_template: "templates/script_template.txt"  ## Code generation prompt template
+
+environment:
+  conda_base_env: "base"          ## Base Conda environment name
+  env_prefix: "alita_env_"        ## Prefix for dynamically created environments
+  dependency_timeout: 300         ## Timeout in seconds for dependency installation
+
+logging:
+  level: "INFO"                   ## Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_file: "logs/alita.log"      ## Path to log file (directory will be created automatically)
+
+api:
+  openai_api_key: "YOUR_OPENAI_API_KEY_HERE"  ## Replace with your actual OpenAI API key
+  openai_api_url: "https://api.openai.com/v1/"  ## OpenAI API endpoint
+  temperature: 0.7                ## Temperature for LLM API calls (0.0-2.0)
+  max_tokens: 4000               ## Maximum tokens for API responses
+
+## Optional: MCP Registry configuration
+mcp_registry:
+  registry_path: "mcp_registry.json"  ## Path to store MCP registry file
+
+## Optional: Web Agent configuration
+web_agent_timeout: 10            ## Timeout for web requests in seconds
+
+## Optional: Code execution configuration
+execution_timeout: 300           ## Timeout for script execution in seconds
+max_iterations: 3                ## Maximum iterations for the CodeReAct loop
+
+misc:
+  experiment_mode: "benchmark"    ## Options: "benchmark" or "single_task"
+  debug: false                    ## Enable debug mode for verbose logging
