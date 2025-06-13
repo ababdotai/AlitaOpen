@@ -1,7 +1,7 @@
 """web_agent.py
 
 This module implements the WebAgent class for external searches and webpage navigation.
-It uses the requests library to perform HTTP requests and BeautifulSoup from bs4 to parse HTML responses.
+It uses the exa-py library to perform semantic searches and content retrieval.
 The WebAgent provides two main public methods:
     - search(query: str) -> list
     - navigate(url: str) -> str
@@ -9,11 +9,9 @@ The WebAgent provides two main public methods:
 These methods are used by the ManagerAgent to gather external context and resource URLs for tool generation.
 """
 
-import requests
-from bs4 import BeautifulSoup
+from exa_py import Exa
 import logging
-from typing import List, Dict, Any
-import urllib.parse
+from typing import List, Dict, Any, Optional
 
 class WebAgent:
     def __init__(self, config: Dict[str, Any]) -> None:
@@ -22,37 +20,36 @@ class WebAgent:
 
         Args:
             config (Dict[str, Any]): Configuration dictionary, typically loaded from config.yaml.
-                                      If no specific settings for the web agent are provided, 
-                                      defaults will be used.
+                                      Must contain 'exa_api_key' for authentication.
+                                      Optional settings include 'max_results' and 'use_autoprompt'.
         """
-        self.config: Dict[str, Any] = config
-        # Set a default user agent string to mimic a typical web browser.
-        self.user_agent: str = (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/115.0.0.0 Safari/537.36"
-        )
-        # Headers to use for HTTP requests.
-        self.headers: Dict[str, str] = {
-            "User-Agent": self.user_agent
-        }
-        # Default search URL prefix. Using Google's search URL as default.
-        self.search_url_prefix: str = "https://www.google.com/search?q="
-        # Default timeout value for web requests (in seconds).
-        self.timeout: int = self.config.get("web_agent_timeout", 5)
+        exa_config: Dict[str, Any] = config.get("exa", {})
 
-        logging.info("WebAgent initialized with timeout=%d seconds and search_url_prefix=%s",
-                     self.timeout, self.search_url_prefix)
+        # Get API key from config
+        api_key: Optional[str] = exa_config.get("exa_api_key")
+        if not api_key:
+            raise ValueError("exa_api_key must be provided in config")
+        
+        # Initialize Exa client
+        self.exa: Exa = Exa(api_key=api_key)
+        
+        # Configuration options
+        self.max_results: int = exa_config.get("max_results", 10)
+        self.use_autoprompt: bool = exa_config.get("use_autoprompt", True)
+        self.include_text: bool = exa_config.get("include_text", True)
+        
+        logging.info("WebAgent initialized with Exa API, max_results=%d, use_autoprompt=%s",
+                     self.max_results, self.use_autoprompt)
 
     def search(self, query: str) -> List[Dict[str, str]]:
         """
-        Perform an external search using the provided natural language query.
+        Perform an external search using the provided natural language query via Exa API.
 
-        Constructs a search URL, sends an HTTP GET request, parses the returned HTML,
-        and extracts a list of resource items. Each resource item is a dictionary containing:
+        Uses Exa's semantic search capabilities to find relevant web pages.
+        Each result item is a dictionary containing:
             - 'url': The hyperlink URL of the result.
-            - 'title': The text content of the link.
-            - 'snippet': An optional snippet (left empty if not available).
+            - 'title': The title of the web page.
+            - 'snippet': A text snippet or summary from the page.
 
         Args:
             query (str): The natural language query to search for.
@@ -62,50 +59,39 @@ class WebAgent:
                                   Returns an empty list if the search fails or no results are found.
         """
         try:
-            # Encode the query for inclusion in the URL.
-            encoded_query: str = urllib.parse.quote(query)
-            search_url: str = self.search_url_prefix + encoded_query
-            logging.info("Executing search with URL: %s", search_url)
-
-            response = requests.get(search_url, headers=self.headers, timeout=self.timeout)
-            if response.status_code != 200:
-                logging.error("Search request failed with status code %d for query: %s",
-                              response.status_code, query)
-                return []
-
-            soup = BeautifulSoup(response.text, "html.parser")
+            logging.info("Executing Exa search for query: %s", query)
+            
+            # Perform search using Exa API
+            search_response = self.exa.search(
+                query=query,
+                num_results=self.max_results,
+                use_autoprompt=self.use_autoprompt
+            )
+            
             results: List[Dict[str, str]] = []
-            seen_urls: set = set()
-
-            # Extract anchor tags. Many anchors in the page are not search results,
-            # so we filter out those that do not start with "http" and contain "google".
-            anchor_tags = soup.find_all("a", href=True)
-            for anchor in anchor_tags:
-                href: str = anchor.get("href").strip()
-                if href.startswith("http") and "google" not in href and href not in seen_urls:
-                    # Use the anchor's text as title; it might be empty.
-                    title: str = anchor.get_text().strip()
-                    result_item: Dict[str, str] = {
-                        "url": href,
-                        "title": title,
-                        "snippet": ""
-                    }
-                    results.append(result_item)
-                    seen_urls.add(href)
-
-            logging.info("Search query '%s' returned %d results", query, len(results))
+            
+            # Process search results
+            for result in search_response.results:
+                result_item: Dict[str, str] = {
+                    "url": result.url,
+                    "title": getattr(result, 'title', '') or '',
+                    "snippet": getattr(result, 'text', '') or ''
+                }
+                results.append(result_item)
+            
+            logging.info("Exa search query '%s' returned %d results", query, len(results))
             return results
-
+            
         except Exception as e:
-            logging.error("Exception occurred during search for query '%s': %s", query, str(e))
+            logging.error("Exception occurred during Exa search for query '%s': %s", query, str(e))
             return []
 
     def navigate(self, url: str) -> str:
         """
-        Retrieve and process the content of the web page at the given URL.
+        Retrieve and process the content of the web page at the given URL using Exa API.
 
-        This method sends an HTTP GET request to the URL, parses the returned HTML,
-        removes script and style tags for cleaner output, and returns the resulting text.
+        This method uses Exa's get_contents API to fetch clean, processed text content
+        from the specified URL without needing to handle HTML parsing manually.
 
         Args:
             url (str): The URL of the web page to navigate.
@@ -114,23 +100,32 @@ class WebAgent:
             str: The cleaned textual content of the page. Returns an empty string if navigation fails.
         """
         try:
-            logging.info("Navigating to URL: %s", url)
-            response = requests.get(url, headers=self.headers, timeout=self.timeout)
-            if response.status_code != 200:
-                logging.error("Navigation request failed with status code %d for URL: %s",
-                              response.status_code, url)
+            logging.info("Navigating to URL using Exa: %s", url)
+            
+            # Use Exa's get_contents API to retrieve page content
+            contents_response = self.exa.get_contents(
+                urls=[url],
+                text=True
+            )
+            
+            # Extract text content from the response
+            if contents_response.context:
+                return contents_response.context
+            elif contents_response.results and len(contents_response.results) > 0:
+                content_item = contents_response.results[0]
+                page_text: str = getattr(content_item, 'text', '') or ''
+                
+                # If text is not available, try extract field
+                if not page_text:
+                    page_text = getattr(content_item, 'extract', '') or ''
+                
+                logging.info("Navigation to URL '%s' succeeded; content length: %d characters", 
+                           url, len(page_text))
+                return page_text
+            else:
+                logging.warning("No content retrieved for URL: %s", url)
                 return ""
-
-            soup = BeautifulSoup(response.text, "html.parser")
-            # Remove script and style elements from the page.
-            for script_tag in soup(["script", "style"]):
-                script_tag.decompose()
-
-            # Get text content from the page and clean up whitespace.
-            page_text: str = soup.get_text(separator=" ", strip=True)
-            logging.info("Navigation to URL '%s' succeeded; content length: %d characters", url, len(page_text))
-            return page_text
-
+                
         except Exception as e:
-            logging.error("Exception occurred during navigation for URL '%s': %s", url, str(e))
+            logging.error("Exception occurred during Exa navigation for URL '%s': %s", url, str(e))
             return ""

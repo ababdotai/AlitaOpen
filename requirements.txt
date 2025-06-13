@@ -2,9 +2,11 @@
 # AI and LLM integration (using older version for compatibility)
 openai>=1.0.0
 
-# Web scraping and HTTP requests
+# Semantic search and web content retrieval
+exa-py>=1.0.0
+
+# HTTP requests
 requests>=2.25.0
-beautifulsoup4>=4.9.0
 urllib3>=1.26.0
 
 # Configuration and data handling

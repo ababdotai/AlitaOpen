@@ -44,8 +44,12 @@ api:
 mcp_registry:
   registry_path: "mcp_registry.json"  ## Path to store MCP registry file
 
-## Optional: Web Agent configuration
-web_agent_timeout: 10            ## Timeout for web requests in seconds
+## Optional: Web Agent configuration (using Exa API)
+exa:
+  exa_api_key: "YOUR_EXA_API_KEY_HERE"  ## Replace with your actual Exa API key for semantic search
+  max_results: 10                  ## Maximum number of search results to return
+  use_autoprompt: true             ## Whether to use Exa's autoprompt feature for better search queries
+  include_text: true               ## Whether to include text content in search results
 
 ## Optional: Code execution configuration
 execution_timeout: 300           ## Timeout for script execution in seconds

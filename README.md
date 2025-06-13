@@ -100,16 +100,18 @@ flowchart TD
    
    Required packages:
    - `openai`
+   - `exa-py`
    - `requests`
-   - `beautifulsoup4`
    - `pyyaml`
    - `conda` (system package)
 
 3. **Set up configuration**:
-   - Copy `config.yaml` and update the OpenAI API key:
+   - Copy `config.yaml.example` to `config.yaml` and update the API keys:
    ```yaml
    api:
-     openai_api_key: "your-actual-api-key-here"
+     openai_api_key: "your-actual-openai-api-key-here"
+   exa:
+     exa_api_key: "your-actual-exa-api-key-here"
    ```
 
 ## ⚙️ Configuration
@@ -136,8 +138,10 @@ environment:
 ### API Configuration
 ```yaml
 api:
-  openai_api_key: "<YOUR_API_KEY_HERE>"    # OpenAI API key
+  openai_api_key: "<YOUR_OPENAI_API_KEY_HERE>"  # OpenAI API key
   openai_api_url: "https://api.openai.com/v1"
+exa:
+  exa_api_key: "<YOUR_EXA_API_KEY_HERE>"        # Exa API key for semantic search
 ```
 
 ### Benchmark Configuration
