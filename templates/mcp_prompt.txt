@@ -11,13 +11,15 @@ Analyze the task and determine:
 3. What dependencies might be required
 4. A search query for finding relevant external resources
 
-Respond in JSON format with:
+Respond ONLY in valid JSON format with NO markdown code blocks or additional text:
 {
   "capability_gap": boolean,
   "mcp_spec": "detailed specification if needed",
   "dependencies": ["list", "of", "dependencies"],
   "search_query": "query for external resources"
 }
+
+IMPORTANT: Your response must be valid JSON only. Do not include ```json or ``` markdown formatting.
 
 ## Guidelines
 

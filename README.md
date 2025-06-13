@@ -78,8 +78,8 @@ The system is configured through `config.yaml`. Key configuration sections:
 ### Agent Configuration
 ```yaml
 agent:
-  primary_llm: "GPT-4o"                    # Primary LLM model
-  secondary_llm: "GPT-4o-mini"              # Secondary model
+  primary_llm: "gpt-4o"                    # Primary LLM model
+  secondary_llm: "gpt-4o-mini"              # Secondary model
   mcp_prompt_template: "templates/mcp_prompt.txt"
   script_gen_prompt_template: "templates/script_template.txt"
 ```

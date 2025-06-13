@@ -94,17 +94,10 @@ if __name__ == "__main__":
 
 ## Output Format
 
-Provide your response in the following format:
+Provide your response as a complete Python script ONLY. Do not wrap it in JSON or markdown code blocks.
+Just output the raw Python script code directly.
 
-```json
-{{
-    "script": "[Complete Python script code]",
-    "dependencies": ["List of required packages"],
-    "environment_setup": "[Any environment setup commands]",
-    "usage_instructions": "[How to run and use the script]",
-    "description": "[Brief description of what the script does]"
-}}
-```
+Include dependency information and usage instructions as comments at the top of the script.
 
 ## Important Notes
 

@@ -113,8 +113,11 @@ class MCPBrainstorm:
         
         # Parse the response text to extract a structured MCP specification.
         try:
-            # Attempt to parse the LLM response directly as JSON.
-            mcp_spec: Dict[str, Any] = json.loads(response_text)
+            # Clean the response text by removing markdown code blocks and extra whitespace
+            cleaned_response = self._clean_json_response(response_text)
+            
+            # Attempt to parse the cleaned LLM response as JSON.
+            mcp_spec: Dict[str, Any] = json.loads(cleaned_response)
         except json.JSONDecodeError as jde:
             logging.warning("Direct JSON parsing failed: %s", str(jde))
             # Attempt to extract a valid JSON substring using regex.
@@ -122,7 +125,9 @@ class MCPBrainstorm:
             if json_match:
                 json_str: str = json_match.group(0)
                 try:
-                    mcp_spec = json.loads(json_str)
+                    # Clean the extracted JSON string
+                    cleaned_json = self._clean_json_response(json_str)
+                    mcp_spec = json.loads(cleaned_json)
                 except Exception as e:
                     error_msg = f"Failed to parse JSON from extracted substring: {str(e)}"
                     logging.error(error_msg)
@@ -151,3 +156,31 @@ class MCPBrainstorm:
             mcp_spec["mcp_spec"] = "No detailed specification provided."
         
         return mcp_spec
+    
+    def _clean_json_response(self, response_text: str) -> str:
+        """
+        Clean the LLM response by removing markdown code blocks and extra formatting.
+        
+        Args:
+            response_text (str): The raw response text from the LLM.
+            
+        Returns:
+            str: The cleaned response text ready for JSON parsing.
+        """
+        try:
+            # Remove markdown code blocks (```json, ```, etc.)
+            cleaned = re.sub(r'```(?:json)?\s*', '', response_text)
+            cleaned = re.sub(r'```\s*', '', cleaned)
+            
+            # Remove any leading/trailing whitespace
+            cleaned = cleaned.strip()
+            
+            # If the response starts with text before JSON, try to extract just the JSON part
+            json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+            if json_match and not cleaned.startswith('{'):
+                cleaned = json_match.group(0)
+            
+            return cleaned
+        except Exception as e:
+            logging.warning("Error during JSON response cleaning: %s", str(e))
+            return response_text.strip()

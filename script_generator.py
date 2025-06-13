@@ -12,6 +12,7 @@ agent.script_gen_prompt_template). This module relies on shared utilities for lo
 configuration loading, and error handling.
 """
 
+import os
 from openai import OpenAI
 import json
 import logging
@@ -46,12 +47,12 @@ class ScriptGenerator:
                 "script_gen_prompt_template", "templates/script_template.txt"
             )
             self.prompt_template: str = read_template(self.prompt_template_path)
-            self.model: str = agent_config.get("primary_llm", "GPT-4o")
+            self.model: str = agent_config.get("primary_llm", "gpt-4o")
             
             # API configuration
             api_config: Dict[str, Any] = config.get("api", {})
-            self.api_key: str = api_config.get("openai_api_key", "<YOUR_API_KEY_HERE>")
-            self.api_url: str = api_config.get("openai_api_url", "https://api.openai.com/v1")
+            self.api_key: str = api_config.get("openai_api_key", os.environ.get("OPENAI_API_KEY"))
+            self.api_url: str = api_config.get("openai_api_url", os.environ.get("OPENAI_API_BASE"))
             self.temperature: float = float(api_config.get("temperature", 0.7))
             self.max_tokens: int = int(api_config.get("max_tokens", 300))
             
@@ -139,7 +140,7 @@ class ScriptGenerator:
 
     def _clean_script(self, script_text: str) -> str:
         """
-        Clean the generated script text by removing markdown code fences and extraneous formatting.
+        Clean the generated script text by removing markdown code fences, JSON wrappers, and extraneous formatting.
 
         Args:
             script_text (str): The raw script text returned by the LLM API.
@@ -148,10 +149,24 @@ class ScriptGenerator:
             str: The cleaned script text.
         """
         try:
+            cleaned_script = script_text.strip()
+            
+            # Check if the response is wrapped in JSON format
+            if cleaned_script.startswith('{') and cleaned_script.endswith('}'):
+                try:
+                    # Try to parse as JSON and extract the script field
+                    json_response = json.loads(cleaned_script)
+                    if isinstance(json_response, dict) and 'script' in json_response:
+                        cleaned_script = json_response['script']
+                        logging.info("Extracted script from JSON wrapper")
+                except json.JSONDecodeError:
+                    logging.warning("Failed to parse JSON wrapper, treating as raw script")
+            
             # Remove markdown code fences (``` and ```python)
-            cleaned_script: str = re.sub(r"```(?:python)?", "", script_text)
-            cleaned_script = re.sub(r"```", "", cleaned_script)
-            # Remove any leading/trailing whitespace.
+            cleaned_script = re.sub(r"```(?:python)?\s*", "", cleaned_script)
+            cleaned_script = re.sub(r"```\s*", "", cleaned_script)
+            
+            # Remove any leading/trailing whitespace
             return cleaned_script.strip()
         except Exception as e:
             logging.error("Error during script cleanup: %s", str(e))
