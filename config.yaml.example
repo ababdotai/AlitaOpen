@@ -1,5 +1,8 @@
 ## config.yaml.example
 ## Copy this file to config.yaml and update the values according to your setup
+logging:
+  level: "INFO"                   ## Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_file: "logs/alita.log"      ## Path to log file (directory will be created automatically)
 
 training:
   learning_rate: "N/A"  ## Not applicable; the agent pipeline does not use gradient-based training.
@@ -30,15 +33,11 @@ environment:
   env_prefix: "alita_env_"        ## Prefix for dynamically created environments
   dependency_timeout: 300         ## Timeout in seconds for dependency installation
 
-logging:
-  level: "INFO"                   ## Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
-  log_file: "logs/alita.log"      ## Path to log file (directory will be created automatically)
-
 api:
   openai_api_key: "YOUR_OPENAI_API_KEY_HERE"  ## Replace with your actual OpenAI API key
   openai_api_url: "https://api.openai.com/v1/"  ## OpenAI API endpoint
   temperature: 0.7                ## Temperature for LLM API calls (0.0-2.0)
-  max_tokens: 4000               ## Maximum tokens for API responses
+  max_tokens: 16384               ## Maximum tokens for API responses
 
 ## Optional: MCP Registry configuration
 mcp_registry:

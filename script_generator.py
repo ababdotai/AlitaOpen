@@ -67,7 +67,7 @@ class ScriptGenerator:
         except Exception as e:
             handle_error(e)
 
-    def generate_script(self, spec: Dict[str, Any], resources: List[Dict[str, Any]]) -> str:
+    def generate_script(self, spec: Dict[str, Any], resources: List[Dict[str, Any]]) -> Dict[str, str]:
         """
         Generate a self-contained Python script based on the given specification and external resources.
 
@@ -88,7 +88,7 @@ class ScriptGenerator:
                     - "snippet": (Optional) A snippet or excerpt from the resource.
 
         Returns:
-            str: The generated Python script as a string.
+            Dict[str, str]: Dictionary containing 'script' and 'requirements' keys.
         """
         try:
             # Extract task and tool specification details from the spec dictionary.
@@ -129,18 +129,27 @@ class ScriptGenerator:
             logging.info("Received response from LLM for script generation.")
 
             # Clean the LLM output to remove markdown fences or extraneous formatting.
+            # Also extract requirements if XML format is used
+            self._extracted_requirements = None
             final_script: str = self._clean_script(response_text)
-            logging.debug("Generated script (truncated): %s", final_script[:200])
-            return final_script
+            logging.debug("Generated script: %s", final_script)
+            
+            # Return both script and requirements
+            result = {
+                'script': final_script,
+                'requirements': self._extracted_requirements or ''
+            }
+            return result
 
         except Exception as e:
             handle_error(e)
-            # In case error handling does not raise, return an empty script.
-            return ""
+            # In case error handling does not raise, return empty result.
+            return {'script': '', 'requirements': ''}
 
     def _clean_script(self, script_text: str) -> str:
         """
         Clean the generated script text by removing markdown code fences, JSON wrappers, and extraneous formatting.
+        Also handles XML format with separate requirements and code sections.
 
         Args:
             script_text (str): The raw script text returned by the LLM API.
@@ -161,6 +170,29 @@ class ScriptGenerator:
                         logging.info("Extracted script from JSON wrapper")
                 except json.JSONDecodeError:
                     logging.warning("Failed to parse JSON wrapper, treating as raw script")
+            
+            # Check if the response contains XML format with requirements and code sections
+            if '<requirements>' in cleaned_script and '<code>' in cleaned_script:
+                try:
+                    # Extract requirements section
+                    requirements_match = re.search(r'<requirements>(.*?)</requirements>', cleaned_script, re.DOTALL)
+                    code_match = re.search(r'<code>(.*?)</code>', cleaned_script, re.DOTALL)
+                    
+                    if requirements_match and code_match:
+                        requirements = requirements_match.group(1).strip()
+                        code = code_match.group(1).strip()
+                        
+                        # Store requirements for later use by environment manager
+                        self._extracted_requirements = requirements
+                        logging.info("Extracted requirements and code from XML format")
+                        logging.debug("Requirements: %s", requirements)
+                        
+                        # Return only the code part
+                        cleaned_script = code
+                    else:
+                        logging.warning("XML format detected but failed to extract requirements or code sections")
+                except Exception as e:
+                    logging.error("Error parsing XML format: %s", str(e))
             
             # Remove markdown code fences (``` and ```python)
             cleaned_script = re.sub(r"```(?:python)?\s*", "", cleaned_script)

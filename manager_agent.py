@@ -146,12 +146,24 @@ class ManagerAgent:
                 logging.info("No external resource search required for this iteration.")
             
             # Generate the executable script based on the specification and gathered resources.
-            script: str = self.script_generator.generate_script(spec, resources)
-            logging.info("Generated script (first 200 chars): %s", script[:200])
+            script_result: Dict[str, str] = self.script_generator.generate_script(spec, resources)
+            script: str = script_result.get('script', '')
+            requirements: str = script_result.get('requirements', '')
+            logging.debug("Generated script: %s", script if script else "No script generated")
             
-            # Environment setup: create a unique name and retrieve dependencies.
+            # Environment setup: create a unique name and use extracted requirements if available
             env_name: str = self.generate_env_name(task, iteration + 1)
-            dependencies: List[str] = spec.get("dependencies", [])
+            
+            # Use extracted requirements from script_generator if available, otherwise fall back to spec dependencies
+            if requirements:
+                # Parse requirements string into list of dependencies
+                dependencies: List[str] = [req.strip() for req in requirements.split('\n') if req.strip()]
+                logging.info("Using extracted requirements from script: %s", dependencies)
+            else:
+                # Fall back to dependencies from spec (for backward compatibility)
+                dependencies: List[str] = spec.get("dependencies", [])
+                logging.info("Using dependencies from spec: %s", dependencies)
+            
             env_config: Dict[str, Any] = {
                 "env_name": env_name,
                 "dependencies": dependencies

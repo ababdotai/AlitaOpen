@@ -94,10 +94,47 @@ if __name__ == "__main__":
 
 ## Output Format
 
-Provide your response as a complete Python script ONLY. Do not wrap it in JSON or markdown code blocks.
-Just output the raw Python script code directly.
+Provide your response in the following XML format to separate dependencies and code:
 
-Include dependency information and usage instructions as comments at the top of the script.
+1. **Requirements Section**: Wrap all Python package dependencies in `<requirements></requirements>` tags
+2. **Code Section**: Wrap the complete Python script in `<code></code>` tags
+
+Example output format:
+```
+<requirements>
+opencv-python>=4.5.0
+moviepy>=1.0.3
+numpy>=1.21.0
+pandas>=1.3.0
+torch>=1.9.0
+transformers>=4.0.0
+</requirements>
+
+<code>
+#!/usr/bin/env python3
+"""
+Script Description: [Brief description]
+Generated for task: [Task description]
+"""
+
+import os
+import sys
+# ... rest of the script
+</code>
+```
+
+**Requirements Guidelines:**
+- List only actual Python packages that can be installed via pip
+- Include version constraints where appropriate (>=, ==, ~=)
+- Use exact package names as they appear on PyPI
+- Do NOT include generic descriptions like "video processing libraries"
+- Each package should be on a separate line
+- Do NOT include standard library modules (os, sys, logging, etc.)
+
+**Code Guidelines:**
+- Include dependency information and usage instructions as comments at the top of the script
+- Do not wrap the code in markdown code blocks within the <code> tags
+- Ensure the script is complete and executable
 
 ## Important Notes
 

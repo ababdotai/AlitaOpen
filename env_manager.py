@@ -124,9 +124,10 @@ class EnvironmentManager:
             logging.info("Installing dependencies in environment %s: %s",
                          full_env_name, dependencies)
 
-            # Construct the command to install dependencies using pip inside the environment.
-            # e.g., conda run -n <full_env_name> pip install dep1 dep2 ...
-            cmd: List[str] = ["conda", "run", "-n", full_env_name, "pip", "install"] + dependencies
+            # Construct the command to install dependencies using python -m pip inside the environment.
+            # This avoids pip interpreter path issues that can occur with direct pip calls.
+            # e.g., conda run -n <full_env_name> python -m pip install dep1 dep2 ...
+            cmd: List[str] = ["conda", "run", "-n", full_env_name, "python", "-m", "pip", "install"] + dependencies
 
             result: subprocess.CompletedProcess = subprocess.run(
                 cmd,
