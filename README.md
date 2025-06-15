@@ -1,6 +1,8 @@
 # Alita: Adaptive LLM-based Iterative Task Automation
 
-Alita is an intelligent agent system that automatically generates and executes Python scripts to solve complex tasks through an iterative CodeReAct (Code Reasoning and Acting) loop. The system can analyze natural language tasks, detect capability gaps, search for external resources, generate executable code, and manage isolated execution environments.
+> Inspired by the paper "Alita: Generalist Agent Enabling Scalable Agentic Reasoning with Minimal Predefinition and Maximal Self-Evolution".
+
+Alita is an intelligent meta-agent system that automatically invents Python scripts as tools to solve complex tasks through an iterative CodeReAct (Code Reasoning and Acting) loop. The system can analyze natural language requirements, detect capability gaps, search for external resources, generate and register executable code, and manage isolated execution environments between tasks.
 
 ## 🚀 Key Features
 
@@ -291,6 +293,13 @@ logging:
   log_file: "logs/alita.log"
 ```
 
+## Inspiration and Credits
+This project is inspired by the Alita project by CharlesQ9 and the concepts presented in the research paper "Alita: Generalist Agent Enabling Scalable Agentic Reasoning with Minimal Predefinition and Maximal Self-Evolution".
+
+Original Alita Project: CharlesQ9/Alita on GitHub
+Research Paper: Alita: Generalist Agent Enabling Scalable Agentic Reasoning with Minimal Predefinition and Maximal Self-Evolution (arXiv:2505.20286)
+Full credits to the authors and contributors of these works for the foundational architecture and ideas.
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -316,7 +325,3 @@ For questions, issues, or contributions, please:
 - Check the logs in `logs/alita.log` for debugging
 - Ensure your OpenAI API key is properly configured
 - Verify Conda is installed and accessible
-
----
-
-**Note**: This system requires an active OpenAI API key and internet connection for LLM calls and web searches. Ensure proper API rate limiting and cost management when running extensive evaluations.
