@@ -15,13 +15,13 @@ If any step fails (prompt formatting, API call, or JSON parsing), the code logs 
 returns a default dictionary indicating no capability gap and providing an error message.
 """
 
-from openai import OpenAI
 import json
 import logging
 import re
 from typing import Any, Dict
 
 from utils import read_template, handle_error
+from model_client import ModelClientFactory, ModelClient
 
 class MCPBrainstorm:
     def __init__(self, config: Dict[str, Any]) -> None:
@@ -29,16 +29,16 @@ class MCPBrainstorm:
         Initialize the MCPBrainstorm instance with configuration settings.
         
         This loads the MCP prompt template from the file specified in the configuration under
-        agent.mcp_prompt_template, sets up the LLM API parameters (model name, API key, API URL,
-        temperature, and max tokens), and configures the OpenAI library accordingly.
+        agent.mcp_prompt_template, and creates an appropriate model client based on the
+        configured model (OpenAI or Anthropic).
         
         Args:
             config (Dict[str, Any]): Configuration dictionary.
                 Expected keys:
                     - agent.mcp_prompt_template: File path for the MCP prompt template.
                     - agent.primary_llm: The primary LLM model name.
-                    - api.openai_api_key: OpenAI API key.
-                    - api.openai_api_url: OpenAI API endpoint.
+                    - api.openai_api_key: OpenAI API key (if using OpenAI models).
+                    - api.anthropic_api_key: Anthropic API key (if using Anthropic models).
                     - Optional: api.temperature and api.max_tokens for API call tuning.
         """
         self.config: Dict[str, Any] = config
@@ -47,23 +47,17 @@ class MCPBrainstorm:
         agent_config: Dict[str, Any] = config.get("agent", {})
         self.prompt_template_path: str = agent_config.get("mcp_prompt_template", "templates/mcp_prompt.txt")
         self.prompt_template: str = read_template(self.prompt_template_path)
-        self.model: str = agent_config.get("primary_llm", "gpt-4o")
         
         # API settings
         api_config: Dict[str, Any] = config.get("api", {})
-        self.api_key: str = api_config.get("openai_api_key", "<YOUR_API_KEY_HERE>")
-        self.api_url: str = api_config.get("openai_api_url", "https://api.openai.com/v1")
         self.temperature: float = float(api_config.get("temperature", 0.7))
         self.max_tokens: int = int(api_config.get("max_tokens", 150))
         
-        # Initialize OpenAI client
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.api_url
-        )
+        # Initialize model client using factory
+        self.model_client: ModelClient = ModelClientFactory.create_client(config)
         
         logging.info("MCPBrainstorm initialized with model: %s, prompt template: %s", 
-                     self.model, self.prompt_template_path)
+                     self.model_client.get_model_name(), self.prompt_template_path)
 
     def brainstorm(self, task: str, context: str) -> Dict[str, Any]:
         """
@@ -96,15 +90,14 @@ class MCPBrainstorm:
 
         logging.debug("Constructed MCP prompt: %s", prompt)
         
-        # Call OpenAI Chat Completions API with the constructed prompt.
+        # Call LLM API with the constructed prompt using unified client interface.
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
+            messages = [{"role": "user", "content": prompt}]
+            response_text: str = self.model_client.create_completion(
+                messages=messages,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens
             )
-            response_text: str = response.choices[0].message.content
             logging.info("Received response from LLM: %s", response_text)
         except Exception as e:
             error_msg: str = f"LLM API call failed: {str(e)}"

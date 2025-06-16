@@ -1,6 +1,7 @@
 # Core dependencies for Alita project
 # AI and LLM integration (using older version for compatibility)
 openai>=1.0.0
+anthropic>=0.54.0
 
 # Semantic search and web content retrieval
 exa-py>=1.0.0

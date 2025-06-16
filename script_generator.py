@@ -13,13 +13,13 @@ configuration loading, and error handling.
 """
 
 import os
-from openai import OpenAI
 import json
 import logging
 import re
 from typing import Any, Dict, List
 
 from utils import read_template, handle_error
+from model_client import ModelClientFactory, ModelClient
 
 class ScriptGenerator:
     def __init__(self, config: Dict[str, Any]) -> None:
@@ -27,16 +27,16 @@ class ScriptGenerator:
         Initialize the ScriptGenerator with configuration settings.
 
         Loads the script generation prompt template from the file specified under
-        agent.script_gen_prompt_template in the configuration. Also sets up LLM API settings 
-        such as the model name, API key, endpoint URL, temperature, and max tokens.
+        agent.script_gen_prompt_template in the configuration. Creates an appropriate
+        model client based on the configured model (OpenAI or Anthropic).
 
         Args:
             config (Dict[str, Any]): Configuration dictionary loaded from config.yaml.
                 Expected keys:
                     - agent.script_gen_prompt_template: File path for script generation prompt template.
                     - agent.primary_llm: The primary LLM model name to use.
-                    - api.openai_api_key: API key for the OpenAI API.
-                    - api.openai_api_url: API endpoint URL.
+                    - api.openai_api_key: API key for OpenAI (if using OpenAI models).
+                    - api.anthropic_api_key: API key for Anthropic (if using Anthropic models).
                     - Optional: api.temperature: Temperature for API calls (default 0.7).
                     - Optional: api.max_tokens: Maximum tokens for the API response (default 300).
         """
@@ -47,23 +47,17 @@ class ScriptGenerator:
                 "script_gen_prompt_template", "templates/script_template.txt"
             )
             self.prompt_template: str = read_template(self.prompt_template_path)
-            self.model: str = agent_config.get("primary_llm", "gpt-4o")
             
             # API configuration
             api_config: Dict[str, Any] = config.get("api", {})
-            self.api_key: str = api_config.get("openai_api_key", os.environ.get("OPENAI_API_KEY"))
-            self.api_url: str = api_config.get("openai_api_url", os.environ.get("OPENAI_API_BASE"))
             self.temperature: float = float(api_config.get("temperature", 0.7))
             self.max_tokens: int = int(api_config.get("max_tokens", 300))
             
-            # Initialize OpenAI client
-            self.client = OpenAI(
-                api_key=self.api_key,
-                base_url=self.api_url
-            )
+            # Initialize model client using factory
+            self.model_client: ModelClient = ModelClientFactory.create_client(config)
 
             logging.info("ScriptGenerator initialized with model: %s, prompt template: %s",
-                         self.model, self.prompt_template_path)
+                         self.model_client.get_model_name(), self.prompt_template_path)
         except Exception as e:
             handle_error(e)
 
@@ -118,15 +112,14 @@ class ScriptGenerator:
             )
             logging.debug("Constructed script generation prompt: %s", prompt)
 
-            # Call the OpenAI Chat Completions API to generate the script.
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
+            # Call LLM API using unified client interface
+            messages = [{"role": "user", "content": prompt}]
+            response_text: str = self.model_client.create_completion(
+                messages=messages,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens
             )
-            response_text: str = response.choices[0].message.content
-            logging.info("Received response from LLM for script generation.")
+            logging.info("Generated script from LLM: %s", response_text[:200] + "...")
 
             # Clean the LLM output to remove markdown fences or extraneous formatting.
             # Also extract requirements if XML format is used

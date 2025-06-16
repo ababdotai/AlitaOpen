@@ -112,6 +112,7 @@ flowchart TD
    ```yaml
    api:
      openai_api_key: "your-actual-openai-api-key-here"
+     anthropic_api_key: "your-actual-anthropic-api-key-here"  # If using Anthropic models
    exa:
      exa_api_key: "your-actual-exa-api-key-here"
    ```
@@ -141,7 +142,9 @@ environment:
 ```yaml
 api:
   openai_api_key: "<YOUR_OPENAI_API_KEY_HERE>"  # OpenAI API key
-  openai_api_url: "https://api.openai.com/v1"
+  openai_api_url: "https://api.openai.com/v1"   # OpenAI API endpoint
+  anthropic_api_key: "<YOUR_ANTHROPIC_API_KEY_HERE>"  # Anthropic API key
+  anthropic_base_url: "https://api.anthropic.com"  # Anthropic API endpoint (optional)
 exa:
   exa_api_key: "<YOUR_EXA_API_KEY_HERE>"        # Exa API key for semantic search
 ```
