@@ -54,17 +54,16 @@ class EnvironmentManager:
             raise ValueError("Environment name must not be empty.")
         return f"{self.env_prefix}{env_name}"
 
-    def create_environment(self, env_name: str, dependencies: List[str]) -> bool:
+    def create_environment(self, env_name: str) -> bool:
         """
         Create a new Conda environment with the provided name and log the process.
 
         The environment name is combined with the configured prefix to form a unique name.
-        Although a list of dependencies is provided, this function handles only the creation
-        of the environment. Dependency installation is handled by install_dependencies.
+        This function handles only the creation of the environment. Dependency installation
+        is handled by install_dependencies.
 
         Args:
             env_name (str): The base name for the environment.
-            dependencies (List[str]): List of dependencies (for logging context).
 
         Returns:
             bool: True if the environment was successfully created; False otherwise.
@@ -76,9 +75,10 @@ class EnvironmentManager:
             full_env_name: str = self._get_full_env_name(env_name)
             logging.info("Creating Conda environment: %s", full_env_name)
 
-            # Construct the command to create the Conda environment.
-            # e.g., conda create -n <env_full_name> --yes
-            cmd: List[str] = ["conda", "create", "-n", full_env_name, "--yes"]
+            # Construct the command to create the Conda environment with Python and pip.
+            # This ensures the environment has a working Python interpreter and pip.
+            # e.g., conda create -n <env_full_name> python pip --yes
+            cmd: List[str] = ["conda", "create", "-n", full_env_name, "python", "pip", "--yes"]
             result: subprocess.CompletedProcess = subprocess.run(
                 cmd,
                 capture_output=True,

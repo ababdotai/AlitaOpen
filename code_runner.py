@@ -64,7 +64,7 @@ class CodeRunner:
             logging.info("Preparing to run script in environment '%s' with dependencies: %s", env_name, dependencies)
 
             # Step 1: Create the Conda environment.
-            env_created: bool = self.env_manager.create_environment(env_name, dependencies)
+            env_created: bool = self.env_manager.create_environment(env_name)
             if not env_created:
                 error_msg: str = f"Failed to create Conda environment: {env_name}"
                 logging.error(error_msg)

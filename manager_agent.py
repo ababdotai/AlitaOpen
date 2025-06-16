@@ -149,7 +149,6 @@ class ManagerAgent:
             script_result: Dict[str, str] = self.script_generator.generate_script(spec, resources)
             script: str = script_result.get('script', '')
             requirements: str = script_result.get('requirements', '')
-            logging.debug("Generated script: %s", script if script else "No script generated")
             
             # Environment setup: create a unique name and use extracted requirements if available
             env_name: str = self.generate_env_name(task, iteration + 1)
