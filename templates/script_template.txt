@@ -102,12 +102,8 @@ Provide your response in the following XML format to separate dependencies and c
 Example output format:
 ```
 <requirements>
-opencv-python>=4.5.0
-moviepy>=1.0.3
-numpy>=1.21.0
-pandas>=1.3.0
-torch>=1.9.0
-transformers>=4.0.0
+numpy
+moviepy==1.0.3
 </requirements>
 
 <code>
@@ -124,12 +120,16 @@ import sys
 ```
 
 **Requirements Guidelines:**
-- List only actual Python packages that can be installed via pip
-- Include version constraints where appropriate (>=, ==, ~=)
-- Use exact package names as they appear on PyPI
+- **CRITICAL**: List only actual Python packages that can be installed via pip
+- **MANDATORY**: Use EXACT version numbers with == operator (e.g., moviepy==1.0.3, not moviepy>=1.0.3). If not sure, version can be omitted (e.g., numpy)
+- **REQUIRED**: Test compatibility between all dependencies before listing them
+- **ESSENTIAL**: Only include packages that are absolutely necessary for the script to function
+- Use exact package names as they appear on PyPI (case-sensitive)
 - Do NOT include generic descriptions like "video processing libraries"
 - Each package should be on a separate line
-- Do NOT include standard library modules (os, sys, logging, etc.)
+- Do NOT include standard library modules (os, sys, logging, json, re, etc.)
+- **VERIFICATION**: Ensure all listed packages can be installed together without conflicts
+- **MINIMIZE**: Use the smallest possible set of dependencies - prefer standard library when possible
 
 **Code Guidelines:**
 - Include dependency information and usage instructions as comments at the top of the script
