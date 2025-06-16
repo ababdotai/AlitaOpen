@@ -6,6 +6,9 @@ anthropic>=0.54.0
 # Semantic search and web content retrieval
 exa-py>=1.0.0
 
+# Model Context Protocol (MCP) support
+mcp>=1.0.0
+
 # HTTP requests
 requests>=2.25.0
 urllib3>=1.26.0

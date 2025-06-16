@@ -6,6 +6,10 @@ Integration test to verify the modified script generation and dependency extract
 import sys
 import os
 import yaml
+
+# Add the parent directory to the Python path to import modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from script_generator import ScriptGenerator
 
 def load_config():

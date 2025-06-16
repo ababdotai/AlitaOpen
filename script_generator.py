@@ -61,7 +61,7 @@ class ScriptGenerator:
         except Exception as e:
             handle_error(e)
 
-    def generate_script(self, spec: Dict[str, Any], resources: List[Dict[str, Any]]) -> Dict[str, str]:
+    def generate_script(self, spec: Dict[str, Any], resources) -> Dict[str, str]:
         """
         Generate a self-contained Python script based on the given specification and external resources.
 
@@ -75,11 +75,9 @@ class ScriptGenerator:
                 Expected keys include:
                     - "task_description": Description of the task.
                     - "mcp_spec": Functional specifications or design details.
-            resources (List[Dict[str, Any]]): List of external resource items.
-                Each resource is expected to be a dictionary with keys:
-                    - "url": URL of the resource.
-                    - "title": Title or description of the resource.
-                    - "snippet": (Optional) A snippet or excerpt from the resource.
+            resources: External resource items. Can be either:
+                - List[Dict[str, Any]]: Legacy format with list of resource dictionaries
+                - Dict[str, Any]: Enhanced format with 'web_results', 'github_repos', 'pypi_packages' keys
 
         Returns:
             Dict[str, str]: Dictionary containing 'script' and 'requirements' keys.
@@ -90,17 +88,7 @@ class ScriptGenerator:
             tool_spec: str = spec.get("mcp_spec", "No specific tool specification provided.")
             
             # Combine external resource items into a coherent text block.
-            if resources:
-                resource_lines: List[str] = []
-                for resource in resources:
-                    title: str = resource.get("title", "").strip()
-                    url: str = resource.get("url", "").strip()
-                    snippet: str = resource.get("snippet", "").strip()
-                    resource_entry: str = f"Title: {title}\nURL: {url}\nSnippet: {snippet}"
-                    resource_lines.append(resource_entry)
-                external_context: str = "\n---\n".join(resource_lines)
-            else:
-                external_context = "No external resources provided."
+            external_context = self._format_resources(resources)
 
             # Format the prompt using the loaded template.
             # The template should have placeholders:
@@ -138,6 +126,73 @@ class ScriptGenerator:
             handle_error(e)
             # In case error handling does not raise, return empty result.
             return {'script': '', 'requirements': ''}
+    
+    def _format_resources(self, resources) -> str:
+        """
+        Format resources into a coherent text block for the prompt.
+        
+        Args:
+            resources: Can be either legacy list format or enhanced dict format
+            
+        Returns:
+            str: Formatted resource context string
+        """
+        if not resources:
+            return "No external resources provided."
+            
+        # Handle enhanced search format (dict with categorized results)
+        if isinstance(resources, dict):
+            resource_lines: List[str] = []
+            
+            # Format web search results
+            web_results = resources.get('web_results', [])
+            if web_results:
+                resource_lines.append("=== Web Search Results ===")
+                for result in web_results:
+                    title = result.get('title', '').strip()
+                    url = result.get('url', '').strip()
+                    snippet = result.get('snippet', '').strip()
+                    resource_entry = f"Title: {title}\nURL: {url}\nSnippet: {snippet}"
+                    resource_lines.append(resource_entry)
+            
+            # Format GitHub repositories
+            github_repos = resources.get('github_repos', [])
+            if github_repos:
+                resource_lines.append("=== GitHub Repositories ===")
+                for repo in github_repos:
+                    name = repo.get('name', '').strip()
+                    url = repo.get('url', '').strip()
+                    description = repo.get('description', '').strip()
+                    stars = repo.get('stars', '')
+                    resource_entry = f"Repository: {name}\nURL: {url}\nDescription: {description}\nStars: {stars}"
+                    resource_lines.append(resource_entry)
+            
+            # Format PyPI packages
+            pypi_packages = resources.get('pypi_packages', [])
+            if pypi_packages:
+                resource_lines.append("=== PyPI Packages ===")
+                for package in pypi_packages:
+                    name = package.get('name', '').strip()
+                    version = package.get('version', '').strip()
+                    description = package.get('description', '').strip()
+                    resource_entry = f"Package: {name}\nVersion: {version}\nDescription: {description}"
+                    resource_lines.append(resource_entry)
+            
+            return "\n---\n".join(resource_lines) if resource_lines else "No external resources provided."
+        
+        # Handle legacy format (list of resource dicts)
+        elif isinstance(resources, list):
+            resource_lines: List[str] = []
+            for resource in resources:
+                title: str = resource.get("title", "").strip()
+                url: str = resource.get("url", "").strip()
+                snippet: str = resource.get("snippet", "").strip()
+                resource_entry: str = f"Title: {title}\nURL: {url}\nSnippet: {snippet}"
+                resource_lines.append(resource_entry)
+            return "\n---\n".join(resource_lines) if resource_lines else "No external resources provided."
+        
+        else:
+            return "No external resources provided."
 
     def _clean_script(self, script_text: str) -> str:
         """

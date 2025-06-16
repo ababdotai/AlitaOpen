@@ -5,6 +5,10 @@ Test script to verify complex dependency installation.
 
 import sys
 import yaml
+
+# Add the parent directory to the Python path to import modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from env_manager import EnvironmentManager
 
 def test_complex_dependencies():

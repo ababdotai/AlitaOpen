@@ -135,13 +135,13 @@ class ManagerAgent:
             # Task analysis phase – generate specification using current context.
             spec: Dict[str, Any] = self.analyze_task(task, context_feedback)
             
-            # If a capability gap is detected, perform an external search to gather resource context.
-            resources: List[Dict[str, Any]] = []
+            # If a capability gap is detected, perform an Aggregated search to gather resource context.
+            resources: Dict[str, Any] = {}
             if spec.get("capability_gap", False):
                 search_query: str = spec.get("search_query", task)
-                logging.info("Capability gap detected. Initiating external search with query: '%s'", search_query)
+                logging.info("Capability gap detected. Initiating aggregated search with query: '%s'", search_query)
                 resources = self.web_agent.search(search_query)
-                logging.info("Resources obtained: %s", resources)
+                logging.info("Aggregated search results obtained: %s", resources)
             else:
                 logging.info("No external resource search required for this iteration.")
             

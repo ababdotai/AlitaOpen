@@ -8,8 +8,8 @@ import sys
 import time
 from typing import Dict, Any
 
-# Add the current directory to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the parent directory to the Python path to import modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from model_client import ModelClientFactory
 from utils import load_config
