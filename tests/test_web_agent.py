@@ -102,7 +102,7 @@ def test_web_agent_initialization(config: Dict[str, Any]) -> WebAgent:
         print(f"✗ WebAgent initialization failed: {e}")
         return None
 
-def test_search_web_pages(web_agent: WebAgent) -> bool:
+async def test_search_web_pages(web_agent: WebAgent) -> bool:
     """
     Test the search_web_pages functionality of the WebAgent (traditional web search only).
     
@@ -112,7 +112,7 @@ def test_search_web_pages(web_agent: WebAgent) -> bool:
     Returns:
         bool: True if test passed, False otherwise.
     """
-    print("\n=== Testing search_web_pages Functionality (Traditional Web Search) ===")
+    print("\n=== Testing search_web_pages Functionality (Traditional Web Search via MCP) ===")
     
     test_queries = [
         "Python machine learning libraries",
@@ -124,7 +124,7 @@ def test_search_web_pages(web_agent: WebAgent) -> bool:
     for query in test_queries:
         print(f"\nTesting search_web_pages with query: '{query}'")
         try:
-            results = web_agent.search_web_pages(query)
+            results = await web_agent.search_web_pages(query)
             
             if results and len(results) > 0:
                 print(f"✓ search_web_pages returned {len(results)} results")
@@ -293,7 +293,8 @@ def test_navigate(web_agent: WebAgent) -> bool:
     
     try:
         # First, get some URLs from a search
-        search_results = web_agent.search_web_pages("Python programming tutorial")
+        import asyncio
+        search_results = asyncio.run(web_agent.search_web_pages("Python programming tutorial"))
         
         if search_results:
             test_url = search_results[0]['url']
@@ -337,7 +338,8 @@ def main() -> None:
         sys.exit(1)
     
     # Test individual search methods
-    web_search_success = test_search_web_pages(agent)
+    import asyncio
+    web_search_success = asyncio.run(test_search_web_pages(agent))
     github_search_success = test_search_github_repositories(agent)
     pypi_search_success = test_search_pypi_packages(agent)
     aggregated_search_success = test_search_aggregated(agent)

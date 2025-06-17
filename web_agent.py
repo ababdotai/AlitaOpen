@@ -39,6 +39,9 @@ class WebAgent:
         if not api_key:
             raise ValueError("exa_api_key must be provided in config")
         
+        # Store API key for MCP usage
+        self.api_key: str = api_key
+        
         # Initialize Exa client
         self.exa: Exa = Exa(api_key=api_key)
         
@@ -77,11 +80,11 @@ class WebAgent:
             logging.error("Failed to load MCP servers config: %s", str(e))
             return {}
 
-    def search_web_pages(self, query: str) -> List[Dict[str, str]]:
+    async def search_web_pages(self, query: str) -> List[Dict[str, str]]:
         """
-        Perform an external search using the provided natural language query via Exa API.
+        Perform an external search using the provided natural language query via Exa MCP.
 
-        Uses Exa's semantic search capabilities to find relevant web pages.
+        Uses Exa's semantic search capabilities through MCP to find relevant web pages.
         Each result item is a dictionary containing:
             - 'url': The hyperlink URL of the result.
             - 'title': The title of the web page.
@@ -95,31 +98,108 @@ class WebAgent:
                                   Returns an empty list if the search fails or no results are found.
         """
         try:
-            logging.info("Executing Exa search for query: %s", query)
+            logging.info("Executing Exa MCP search for query: %s", query)
             
-            # Perform search using Exa API
-            search_response = self.exa.search(
-                query=query,
-                num_results=self.max_results,
-                use_autoprompt=self.use_autoprompt
+            exa_config = self.mcp_servers_config.get("mcpServers", {}).get("exa")
+            if not exa_config:
+                logging.warning("Exa MCP server not configured")
+                return []
+            
+            # Use stdio client for local Exa MCP server
+            server_params = StdioServerParameters(
+                command=exa_config["command"],
+                args=exa_config["args"],
+                env={"EXA_API_KEY": self.api_key}  # Pass the API key from existing config
             )
             
-            results: List[Dict[str, str]] = []
-            
-            # Process search results
-            for result in search_response.results:
-                result_item: Dict[str, str] = {
-                    "url": result.url,
-                    "title": getattr(result, 'title', '') or '',
-                    "snippet": getattr(result, 'text', '') or ''
-                }
-                results.append(result_item)
-            
-            logging.info("Exa search query '%s' returned %d results", query, len(results))
-            return results
-            
+            async with stdio_client(server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    
+                    # List available tools
+                    tools = await session.list_tools()
+                    logging.info("Available Exa MCP tools: %s", [tool.name for tool in tools.tools])
+                    
+                    # Find web search tool
+                    web_search_tools = [tool for tool in tools.tools if 'web_search' in tool.name.lower()]
+                    if not web_search_tools:
+                        logging.error("No web search tool found in Exa MCP server")
+                        return []
+                    
+                    # Call the web search tool
+                    result = await session.call_tool(
+                        web_search_tools[0].name,
+                        {
+                            "query": query,
+                            "num_results": self.max_results,
+                            "use_autoprompt": self.use_autoprompt
+                        }
+                    )
+                    
+                    # Parse the result
+                    if result.content:
+                        search_results = []
+                        logging.info("MCP result content type: %s, length: %d", type(result.content), len(result.content))
+                        
+                        for i, content_item in enumerate(result.content):
+                            logging.info("Content item %d type: %s", i, type(content_item))
+                            
+                            if hasattr(content_item, 'text'):
+                                text_content = content_item.text
+                                logging.info("Content item %d text preview: %s", i, text_content[:200] if text_content else "None")
+                                
+                                # Try to parse as JSON first
+                                import json
+                                try:
+                                    parsed_data = json.loads(text_content)
+                                    logging.info("Successfully parsed JSON data: %s", type(parsed_data))
+                                    
+                                    if isinstance(parsed_data, list):
+                                        for item in parsed_data:
+                                            if isinstance(item, dict) and 'url' in item:
+                                                search_results.append({
+                                                    "url": item.get("url", ""),
+                                                    "title": item.get("title", ""),
+                                                    "snippet": item.get("snippet", "") or item.get("text", "") or item.get("content", "")
+                                                })
+                                    elif isinstance(parsed_data, dict):
+                                        # Handle single result object
+                                        if 'results' in parsed_data and isinstance(parsed_data['results'], list):
+                                            for item in parsed_data['results']:
+                                                if isinstance(item, dict) and 'url' in item:
+                                                    search_results.append({
+                                                        "url": item.get("url", ""),
+                                                        "title": item.get("title", ""),
+                                                        "snippet": item.get("snippet", "") or item.get("text", "") or item.get("content", "")
+                                                    })
+                                        elif 'url' in parsed_data:
+                                            # Single result
+                                            search_results.append({
+                                                "url": parsed_data.get("url", ""),
+                                                "title": parsed_data.get("title", ""),
+                                                "snippet": parsed_data.get("snippet", "") or parsed_data.get("text", "") or parsed_data.get("content", "")
+                                            })
+                                            
+                                except json.JSONDecodeError:
+                                    logging.info("Content is not JSON, treating as plain text")
+                                    # If not JSON, treat as plain text result
+                                    if text_content and text_content.strip():
+                                        search_results.append({
+                                            "url": "",
+                                            "title": "Search Result",
+                                            "snippet": text_content
+                                        })
+                            else:
+                                logging.info("Content item %d has no text attribute", i)
+                        
+                        logging.info("Exa MCP search query '%s' returned %d results", query, len(search_results))
+                        return search_results
+                    else:
+                        logging.warning("No content returned from Exa MCP search")
+                        return []
+                        
         except Exception as e:
-            logging.error("Exception occurred during Exa search for query '%s': %s", query, str(e))
+            logging.error("Exception occurred during Exa MCP search for query '%s': %s", query, str(e))
             return []
 
     def navigate(self, url: str) -> str:
@@ -294,16 +374,17 @@ class WebAgent:
             'pypi': []
         }
         
-        # Traditional web search
-        try:
-            results['web'] = self.search_web_pages(query)
-        except Exception as e:
-            logging.error("Web search failed: %s", str(e))
-        
         # MCP-based searches (run asynchronously)
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+            
+            # Traditional web search (now via MCP)
+            try:
+                web_results = loop.run_until_complete(self.search_web_pages(query))
+                results['web'] = web_results
+            except Exception as e:
+                logging.error("Web search failed: %s", str(e))
             
             # GitHub search
             try:
