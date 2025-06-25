@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "github-remote": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer $GITHUB_TOKEN"
+      },
+      "transport": "streamable_http"
+    },
+    "exa": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "exa-mcp-server",
+        "--tools=web_search,research_paper_search"
+      ],
+      "env": {
+        "EXA_API_KEY": "$EXA_API_KEY"
+      }
+    },
+    "pypi": {
+      "command": "python",
+      "args": [
+        "$MCP_SERVERS_DIR/PyPI-MCP-Server/pypi_server.py"
+      ],
+      "transport": "stdio"
+    }
+  }
+}
