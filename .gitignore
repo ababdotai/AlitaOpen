@@ -176,9 +176,6 @@ config.yaml
 logs/
 *.log
 
-# MCP Registry
-mcp_registry.json
-
 # Dataset files (usually large and should be downloaded separately)
 data/
 *.json
@@ -214,3 +211,7 @@ cache/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# MCP Registry
+!mcp_registry.json
+!mcpServers.json

@@ -59,7 +59,7 @@ class WebAgent:
 
     def _load_mcp_servers_config(self) -> Dict[str, Any]:
         """
-        Load MCP servers configuration from the public_mcp_servers/mcpServers.json file.
+        Load MCP servers configuration from the static_mcp/mcpServers.json file.
         
         Returns:
             Dict[str, Any]: MCP servers configuration dictionary.
@@ -67,7 +67,7 @@ class WebAgent:
         try:
             # Get the directory of the current script
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            mcp_config_path = os.path.join(current_dir, "public_mcp_servers", "mcpServers.json")
+            mcp_config_path = os.path.join(current_dir, "static_mcp", "mcpServers.json")
             
             if os.path.exists(mcp_config_path):
                 with open(mcp_config_path, 'r', encoding='utf-8') as f:
