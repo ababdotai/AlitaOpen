@@ -32,7 +32,8 @@ def load_mcp_servers_config() -> Dict[str, Any]:
                         else:
                             server_info["transport"] = "stdio"
 
-                return server_config
+                # Process environment variables before returning
+                return process_environment_variables(server_config)
         else:
             logging.warning("MCP servers config file not found at: %s", mcp_config_path)
             return {"mcpServers": {}}

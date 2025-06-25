@@ -2,15 +2,12 @@ import asyncio
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
-from mcp_config_loader import load_mcp_servers_config, process_environment_variables
+from mcp_config_loader import load_mcp_servers_config
 
 
 async def ping_mcp_servers():
-    # Load MCP servers configuration using shared module
+    # Load MCP servers configuration with environment variables processed
     server_config = load_mcp_servers_config()
-
-    # Process environment variable replacements
-    server_config = process_environment_variables(server_config)
 
     client = MultiServerMCPClient(server_config["mcpServers"])
     tools = await client.get_tools()
