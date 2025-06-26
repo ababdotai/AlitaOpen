@@ -100,7 +100,7 @@ class ResearchAgent:
             graph_builder.add_node("decompose_query", self._decompose_query_node)
             graph_builder.add_node("plan_retrieval", self._plan_retrieval_node)
             graph_builder.add_node("agent", self._agent_node)
-            graph_builder.add_node("tools", ToolNode(mcp_tools))
+            graph_builder.add_node("tools", self._tools_node)
             graph_builder.add_node("evaluate_sufficiency", self._evaluate_sufficiency_node)
             graph_builder.add_node("format_results", self._format_results_node)
             
@@ -235,7 +235,7 @@ class ResearchAgent:
             retrieval_plan = [step.strip() for step in response.split('\n') if step.strip()]
             
             logging.info("Created retrieval plan with %d steps", len(retrieval_plan))
-            logging.info("\n".join(retrieval_plan))
+            logging.info("\n" + "\n".join(retrieval_plan))
             
             return {
                 "retrieval_plan": retrieval_plan,
@@ -384,6 +384,98 @@ class ResearchAgent:
             }]
         
         return []
+    
+    async def _tools_node(self, state: RetrievalState) -> Dict[str, Any]:
+        """
+        Execute tool calls and update retrieved_info with results.
+        
+        Args:
+            state: Current retrieval state
+            
+        Returns:
+            Dict[str, Any]: Updated state with tool results
+        """
+        try:
+            # Get the last message which should contain tool calls
+            messages = state["messages"]
+            last_message = messages[-1] if messages else None
+            
+            if not last_message or not hasattr(last_message, 'tool_calls') or not last_message.tool_calls:
+                logging.warning("No tool calls found in last message")
+                return {"messages": messages}
+            
+            # Execute tool calls using the default ToolNode
+            tool_node = ToolNode(self.mcp_tools)
+            tool_result = await tool_node.ainvoke(state)
+            
+            # Parse tool results and update retrieved_info
+            retrieved_info = state["retrieved_info"].copy()
+            
+            # Get the tool result messages
+            new_messages = tool_result.get("messages", [])
+            tool_messages = [msg for msg in new_messages if hasattr(msg, 'content') and msg not in messages]
+            
+            for tool_message in tool_messages:
+                try:
+                    # Parse tool result content
+                    if hasattr(tool_message, 'content') and tool_message.content:
+                        content = tool_message.content
+                        
+                        # Try to parse as JSON if it looks like structured data
+                        if content.strip().startswith('{') or content.strip().startswith('['):
+                            try:
+                                result_data = json.loads(content)
+                                
+                                # Determine result type based on tool name or content structure
+                                if isinstance(result_data, list):
+                                    # GitHub search results
+                                    if any('github.com' in str(item) for item in result_data[:3] if isinstance(item, dict)):
+                                        retrieved_info["github_repos"].extend(result_data)
+                                        logging.info("Added %d GitHub repositories to retrieved_info", len(result_data))
+                                    # PyPI search results
+                                    elif any('pypi.org' in str(item) for item in result_data[:3] if isinstance(item, dict)):
+                                        retrieved_info["pypi_packages"].extend(result_data)
+                                        logging.info("Added %d PyPI packages to retrieved_info", len(result_data))
+                                    # Web search results
+                                    else:
+                                        retrieved_info["web_results"].extend(result_data)
+                                        logging.info("Added %d web results to retrieved_info", len(result_data))
+                                elif isinstance(result_data, dict):
+                                    # Single result - determine type and add to appropriate list
+                                    if 'github.com' in str(result_data):
+                                        retrieved_info["github_repos"].append(result_data)
+                                        logging.info("Added 1 GitHub repository to retrieved_info")
+                                    elif 'pypi.org' in str(result_data):
+                                        retrieved_info["pypi_packages"].append(result_data)
+                                        logging.info("Added 1 PyPI package to retrieved_info")
+                                    else:
+                                        retrieved_info["web_results"].append(result_data)
+                                        logging.info("Added 1 web result to retrieved_info")
+                            except json.JSONDecodeError:
+                                # If not JSON, treat as text result
+                                text_result = {"content": content, "source": "tool_call"}
+                                retrieved_info["web_results"].append(text_result)
+                                logging.info("Added 1 text result to retrieved_info")
+                        else:
+                            # Plain text result
+                            text_result = {"content": content, "source": "tool_call"}
+                            retrieved_info["web_results"].append(text_result)
+                            logging.info("Added 1 text result to retrieved_info")
+                            
+                except Exception as parse_error:
+                    logging.error("Error parsing tool result: %s", str(parse_error))
+                    continue
+            
+            return {
+                "messages": tool_result.get("messages", messages),
+                "retrieved_info": retrieved_info
+            }
+            
+        except Exception as e:
+            logging.error("Error in tools_node: %s", str(e))
+            return {
+                "messages": state["messages"] + [AIMessage(content=f"Tool execution error: {str(e)}")]
+            }
     
     def _evaluate_sufficiency_node(self, state: RetrievalState) -> Dict[str, Any]:
         """
