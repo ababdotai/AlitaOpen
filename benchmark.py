@@ -30,7 +30,7 @@ class Benchmark:
 
         Args:
             manager_agent (ManagerAgent): An instance of ManagerAgent that encapsulates
-                the full CodeReAct pipeline (including WebAgent, MCPBrainstorm, ScriptGenerator,
+                the full CodeReAct pipeline (including ResearchAgent, MCPBrainstorm, ScriptGenerator,
                 CodeRunner, EnvironmentManager, and MCPRegistry).
             config (Dict[str, Any]): Configuration dictionary loaded from config.yaml.
                 Expected keys:

@@ -1,7 +1,7 @@
 """script_generator.py
 
 This module implements the ScriptGenerator class, which takes a tool specification
-(from MCPBrainstorm) and a list of external resource items (from WebAgent) to generate a
+(from MCPBrainstorm) and a list of external resource items (from ResearchAgent) to generate a
 self-contained executable Python script. The generated script includes not only the
 desired functionality but also the environment setup commands (such as conda environment
 creation and dependency installation).

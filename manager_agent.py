@@ -4,7 +4,7 @@ This module implements the ManagerAgent class, which serves as the central coord
 It orchestrates the iterative CodeReAct loop to:
     - Analyze an input natural language task.
     - Detect capability gaps via the MCPBrainstorm module.
-    - Retrieve external resources using WebAgent if necessary.
+    - Retrieve external resources using ResearchAgent if necessary.
     - Generate a self-contained Python script with ScriptGenerator.
     - Set up an isolated runtime environment and execute the script via CodeRunner.
     - Register successfully executed scripts as new Model Context Protocols (MCPs) using MCPRegistry.
@@ -15,7 +15,7 @@ import logging
 import hashlib
 from typing import Any, Dict, List
 
-from web_agent import WebAgent
+from research_agent import ResearchAgent
 from mcp_brainstorm import MCPBrainstorm
 from script_generator import ScriptGenerator
 from code_runner import CodeRunner
@@ -30,7 +30,7 @@ class ManagerAgent:
 
         This constructor stores the configuration dictionary and instantiates
         the following submodules using the same configuration:
-            - WebAgent for external search and navigation.
+            - ResearchAgent for intelligent information retrieval using LangGraph and MCP tools.
             - MCPBrainstorm for analyzing tasks and generating tool specifications.
             - ScriptGenerator for producing self-contained executable scripts.
             - CodeRunner (which internally uses EnvironmentManager) for executing scripts.
@@ -41,7 +41,7 @@ class ManagerAgent:
             config (Dict[str, Any]): Configuration dictionary loaded from config.yaml.
         """
         self.config: Dict[str, Any] = config
-        self.web_agent: WebAgent = WebAgent(config)
+        self.research_agent: ResearchAgent = ResearchAgent(config)
         self.mcp_brainstorm: MCPBrainstorm = MCPBrainstorm(config)
         self.script_generator: ScriptGenerator = ScriptGenerator(config)
         self.code_runner: CodeRunner = CodeRunner(config)
@@ -112,7 +112,7 @@ class ManagerAgent:
         The method performs the following steps iteratively until successful script execution or
         until the maximum number of iterations is reached:
             1. Analyze the task via MCPBrainstorm to obtain a specification.
-            2. If a capability gap exists, invoke WebAgent.search using a search query from the spec.
+            2. If a capability gap exists, invoke ResearchAgent.search using a search query from the spec.
             3. Generate an executable script using ScriptGenerator with the obtained specification and resources.
             4. Set up the execution environment based on specification dependencies and a unique environment name.
             5. Execute the generated script via CodeRunner.
@@ -140,7 +140,7 @@ class ManagerAgent:
             if spec.get("capability_gap", False):
                 search_query: str = spec.get("search_query", task)
                 logging.info("Capability gap detected. Initiating aggregated search with query: '%s'", search_query)
-                resources = self.web_agent.search(search_query)
+                resources = self.research_agent.search(search_query)
                 logging.info("Aggregated search results obtained: %s", resources)
             else:
                 logging.info("No external resource search required for this iteration.")

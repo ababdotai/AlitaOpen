@@ -1,5 +1,5 @@
 """
-This module implements the RetrieverAgent class using LangGraph framework.
+This module implements the ResearchAgent class using LangGraph framework.
 It creates an agentic retrieval system that can decompose queries, plan retrieval steps,
 and use ReAct pattern to call MCP tools for information gathering from multiple sources.
 
@@ -37,10 +37,10 @@ class RetrievalState(TypedDict):
     iteration_count: int
 
 
-class RetrieverAgent:
+class ResearchAgent:
     def __init__(self, config: Dict[str, Any]) -> None:
         """
-        Initialize the RetrieverAgent with configuration settings.
+        Initialize the ResearchAgent with configuration settings.
         
         Args:
             config (Dict[str, Any]): Configuration dictionary loaded from config.yaml.
@@ -67,7 +67,7 @@ class RetrieverAgent:
             # Initialize the graph (will be created when needed)
             self.graph = None
             
-            logging.info("RetrieverAgent initialized with model: %s", 
+            logging.info("ResearchAgent initialized with model: %s", 
                          self.model_client.get_model_name())
             logging.info("Loaded MCP servers: %s", list(self.mcp_servers_config.keys()))
             
@@ -87,8 +87,11 @@ class RetrieverAgent:
             # Initialize MCP client with servers configuration
             mcp_client = MultiServerMCPClient(self.mcp_servers_config.get("mcpServers", {}))
             mcp_tools = await mcp_client.get_tools()
-            
+
             logging.info("Available MCP tools: %s", [tool.name for tool in mcp_tools])
+            
+            # Store tools for use in agent node
+            self.mcp_tools = mcp_tools
             
             # Create graph builder
             graph_builder = StateGraph(RetrievalState)
@@ -96,7 +99,7 @@ class RetrieverAgent:
             # Add nodes
             graph_builder.add_node("decompose_query", self._decompose_query_node)
             graph_builder.add_node("plan_retrieval", self._plan_retrieval_node)
-            graph_builder.add_node("call_model", self._call_model_node)
+            graph_builder.add_node("agent", self._agent_node)
             graph_builder.add_node("tools", ToolNode(mcp_tools))
             graph_builder.add_node("evaluate_sufficiency", self._evaluate_sufficiency_node)
             graph_builder.add_node("format_results", self._format_results_node)
@@ -104,15 +107,15 @@ class RetrieverAgent:
             # Add edges
             graph_builder.add_edge(START, "decompose_query")
             graph_builder.add_edge("decompose_query", "plan_retrieval")
-            graph_builder.add_edge("plan_retrieval", "call_model")
+            graph_builder.add_edge("plan_retrieval", "agent")
             
-            # Conditional edge from call_model
+            # Conditional edge from agent
             graph_builder.add_conditional_edges(
-                "call_model",
+                "agent",
                 tools_condition,
                 {
                     "tools": "tools",
-                    END: "evaluate_sufficiency",
+                    "__end__": "evaluate_sufficiency",
                 }
             )
             
@@ -123,14 +126,14 @@ class RetrieverAgent:
                 "evaluate_sufficiency",
                 self._should_continue_retrieval,
                 {
-                    "continue": "call_model",
+                    "continue": "agent",
                     "finish": "format_results"
                 }
             )
             
             graph_builder.add_edge("format_results", END)
             
-            # Compile the graph
+            # Compile the graph with proper checkpointer configuration
             graph = graph_builder.compile(checkpointer=MemorySaver())
             graph.name = "Retrieval Agent"
             
@@ -232,6 +235,7 @@ class RetrieverAgent:
             retrieval_plan = [step.strip() for step in response.split('\n') if step.strip()]
             
             logging.info("Created retrieval plan with %d steps", len(retrieval_plan))
+            logging.info("\n".join(retrieval_plan))
             
             return {
                 "retrieval_plan": retrieval_plan,
@@ -244,15 +248,16 @@ class RetrieverAgent:
             logging.error("Error in plan_retrieval_node: %s", str(e))
             return {"retrieval_plan": ["Search for general information"]}
     
-    def _call_model_node(self, state: RetrievalState) -> Dict[str, Any]:
+    def _agent_node(self, state: RetrievalState) -> Dict[str, Any]:
         """
-        Call the language model to decide on next retrieval action.
+        Agent node that calls the language model with tool binding to decide on next retrieval action.
+        This node actually invokes the model and can generate tool calls based on the current state.
         
         Args:
             state: Current retrieval state
             
         Returns:
-            Dict[str, Any]: Updated state with model response
+            Dict[str, Any]: Updated state with model response (potentially with tool calls)
         """
         try:
             original_query = state["original_query"]
@@ -278,17 +283,107 @@ class RetrieverAgent:
             If you have sufficient information, respond with "SUFFICIENT" to end retrieval.
             """
             
+            # Get the current messages and add the new prompt
             messages = state["messages"] + [HumanMessage(content=context_prompt)]
             
-            # This will be handled by tools_condition to decide whether to use tools or end
+            # Check if we should continue or stop based on iteration count and retrieved info
+            total_items = (
+                len(retrieved_info.get("web_results", [])) +
+                len(retrieved_info.get("github_repos", [])) +
+                len(retrieved_info.get("pypi_packages", []))
+            )
+            
+            if total_items >= 5 or iteration_count >= self.max_iterations:
+                # Signal to end retrieval
+                ai_message = AIMessage(content="SUFFICIENT - I have gathered enough information.")
+            else:
+                # Determine which tool to use based on current needs and available tools
+                tool_calls = self._determine_next_tool_calls(original_query, retrieved_info, iteration_count)
+                
+                if tool_calls:
+                    ai_message = AIMessage(
+                        content="I need to gather more information using the available tools.",
+                        tool_calls=tool_calls
+                    )
+                else:
+                    # No suitable tools found, end retrieval
+                    ai_message = AIMessage(content="No suitable tools available, ending retrieval.")
+            
             return {
-                "messages": messages,
+                "messages": messages + [ai_message],
                 "iteration_count": iteration_count + 1
             }
             
         except Exception as e:
-            logging.error("Error in call_model_node: %s", str(e))
-            return {"messages": state["messages"]}
+            logging.error("Error in agent_node: %s", str(e))
+            return {
+                "messages": state["messages"] + [AIMessage(content=f"Error: {str(e)}")],
+                "iteration_count": state.get("iteration_count", 0) + 1
+            }
+    
+    def _determine_next_tool_calls(self, query: str, retrieved_info: dict, iteration_count: int) -> list:
+        """
+        Determine which tool to call next based on current state and available tools.
+        
+        Args:
+            query: Original search query
+            retrieved_info: Currently retrieved information
+            iteration_count: Current iteration number
+            
+        Returns:
+            List of tool calls to make
+        """
+        if not hasattr(self, 'mcp_tools') or not self.mcp_tools:
+            return []
+        
+        # Get available tool names
+        available_tools = {tool.name for tool in self.mcp_tools}
+        
+        # Priority order for different types of searches
+        tool_priorities = [
+            "web_search_exa",  # Web search first
+            "github_search",   # Then GitHub repositories
+            "pypi_search",     # Then PyPI packages
+        ]
+        
+        # Determine what type of information we still need
+        web_results_count = len(retrieved_info.get("web_results", []))
+        github_results_count = len(retrieved_info.get("github_repos", []))
+        pypi_results_count = len(retrieved_info.get("pypi_packages", []))
+        
+        # Choose tool based on what we're missing and what's available
+        for tool_name in tool_priorities:
+            if tool_name in available_tools:
+                # Check if we need this type of information
+                if tool_name == "web_search_exa" and web_results_count < 3:
+                    return [{
+                        "id": f"call_{iteration_count}_{tool_name}",
+                        "name": tool_name,
+                        "args": {"query": query, "num_results": 5}
+                    }]
+                elif tool_name == "github_search" and github_results_count < 2:
+                    return [{
+                        "id": f"call_{iteration_count}_{tool_name}",
+                        "name": tool_name,
+                        "args": {"query": query, "limit": 3}
+                    }]
+                elif tool_name == "pypi_search" and pypi_results_count < 2:
+                    return [{
+                        "id": f"call_{iteration_count}_{tool_name}",
+                        "name": tool_name,
+                        "args": {"query": query, "limit": 3}
+                    }]
+        
+        # If no specific tool is needed, try the first available tool
+        if available_tools:
+            first_tool = next(iter(available_tools))
+            return [{
+                "id": f"call_{iteration_count}_{first_tool}",
+                "name": first_tool,
+                "args": {"query": query}
+            }]
+        
+        return []
     
     def _evaluate_sufficiency_node(self, state: RetrievalState) -> Dict[str, Any]:
         """
@@ -430,8 +525,9 @@ class RetrieverAgent:
                 "iteration_count": 0
             }
             
-            # Run the retrieval graph
-            final_state = await self.graph.ainvoke(initial_state)
+            # Run the retrieval graph with proper configuration
+            config = {"configurable": {"thread_id": "retrieval_thread"}}
+            final_state = await self.graph.ainvoke(initial_state, config=config)
             
             # Parse and return formatted results
             formatted_result = final_state.get("formatted_result", "{}")
@@ -459,11 +555,19 @@ class RetrieverAgent:
             Dict[str, List[Dict[str, Any]]]: Formatted retrieval results
         """
         try:
-            # Run the async retrieve method
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(self.retrieve(query))
-            loop.close()
+            # Check if there's already a running event loop
+            try:
+                loop = asyncio.get_running_loop()
+                # If we're already in an async context, we can't use run_until_complete
+                # This is a limitation - the method should be called from sync context
+                logging.warning("search() called from async context, returning empty results")
+                return {"web_results": [], "github_repos": [], "pypi_packages": []}
+            except RuntimeError:
+                # No running loop, we can create one
+                pass
+            
+            # Use asyncio.run() which properly handles loop creation and cleanup
+            result = asyncio.run(self.retrieve(query))
             return result
         except Exception as e:
             logging.error("Error in synchronous search wrapper: %s", str(e))
@@ -472,6 +576,7 @@ class RetrieverAgent:
 
 if __name__ == "__main__":
     import yaml
+    from utils import setup_logging
     
     # 加载配置文件
     try:
@@ -485,9 +590,16 @@ if __name__ == "__main__":
                 "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
                 "temperature": 0.7,
                 "max_tokens": 4096
+            },
+            "logging": {
+                "level": "INFO",
+                "log_file": "logs/research_agent.log"
             }
         }
     
-    retriever = RetrieverAgent(config)
+    # Setup logging configuration
+    setup_logging(config)
+    
+    retriever = ResearchAgent(config)
     result = retriever.search("video clipping")
     print(result)

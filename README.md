@@ -22,7 +22,7 @@ Alita consists of several core components:
 
 - **ManagerAgent**: Central coordinator that orchestrates the entire pipeline
 - **MCPBrainstorm**: Analyzes tasks and generates tool specifications using LLM
-- **WebAgent**: Performs external web searches and content retrieval
+- **ResearchAgent**: Performs intelligent information retrieval using LangGraph and MCP tools
 - **ScriptGenerator**: Generates executable Python scripts from specifications
 - **CodeRunner**: Executes scripts in isolated Conda environments
 - **EnvironmentManager**: Manages Conda environment creation and dependency installation
@@ -37,10 +37,10 @@ flowchart TD
     B --> C["📊 MCPBrainstorm.brainstorm()"]
     C --> D{"🔍 Capability Gap Detected?"}
     
-    D -->|Yes| E["🌐 WebAgent.search()"]
+    D -->|Yes| E["🌐 ResearchAgent.search()"]
     D -->|No| F["📝 ScriptGenerator.generate_script()"]
     
-    E --> G["🔗 WebAgent.navigate()"]
+    E --> G["🔗 ResearchAgent.retrieve()"]
     G --> H["📚 Collect External Resources"]
     H --> F
     

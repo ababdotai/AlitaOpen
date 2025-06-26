@@ -3,6 +3,10 @@
 openai>=1.0.0
 anthropic>=0.54.0
 
+# Agent framework
+langchain-mcp-adapters>=0.1.4
+langgraph>=0.3.21
+
 # Semantic search and web content retrieval
 exa-py>=1.0.0
 
@@ -19,6 +23,10 @@ PyYAML>=5.4.0
 # Standard library modules (no installation required)
 # - os, sys, logging, hashlib, subprocess, tempfile
 # - json, re, traceback, typing
+
+# Test framework
+pytest
+pytest-asyncio
 
 # External tools (install separately)
 # - Conda: https://docs.conda.io/en/latest/miniconda.html
