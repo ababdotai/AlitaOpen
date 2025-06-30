@@ -15,16 +15,16 @@ async def ping_mcp_servers():
         print(f"Found MCP Server #{i}: {server_name}: {server_info}")
 
     if tools:
-        print(f"Found {len(tools)} MCP tools:")
-        for tool in tools:
-            print("-" * 100)
-            print(tool.name)
-            print(tool.description)
-            print(tool.args_schema)
-            print(tool.return_direct)
-            print(tool.response_format)
+        print(f"\n=== Found {len(tools)} MCP Tools ===")
+        for i, tool in enumerate(tools, 1):
+            print(f"[Tool #{i}] {tool.name}")
+            print(f"[Description] {tool.description}")
+            print(f"[Arguments Schema]\n {tool.args_schema}")
+            print(f"[Return Direct] {tool.return_direct}")
+            print(f"[Response Format] {tool.response_format}")
+            print("-" * 80)
     else:
-        print("No MCP tools found")
+        print("\n❌ No MCP tools found")
 
 
 if __name__ == "__main__":
